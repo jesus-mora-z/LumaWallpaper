@@ -72,6 +72,19 @@ internal static class AppSettings
         settings.SetValue("ShowNowPlaying", enabled ? 1 : 0, RegistryValueKind.DWord);
     }
 
+    public static bool GetShowNowPlayingFrame()
+    {
+        using var settings = Registry.CurrentUser.OpenSubKey(SettingsKey, writable: false);
+        return settings?.GetValue("ShowNowPlayingFrame") is not int value || value != 0;
+    }
+
+    public static void SetShowNowPlayingFrame(bool enabled)
+    {
+        using var settings = Registry.CurrentUser.CreateSubKey(SettingsKey, writable: true)
+            ?? throw new IOException("No se pudo guardar la configuración del marco de música.");
+        settings.SetValue("ShowNowPlayingFrame", enabled ? 1 : 0, RegistryValueKind.DWord);
+    }
+
     public static void SetAutoStart(bool enabled)
     {
         using var run = Registry.CurrentUser.CreateSubKey(RunKey, writable: true)

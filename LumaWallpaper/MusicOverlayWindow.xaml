@@ -11,7 +11,8 @@
         Width="360"
         Height="100">
     <Grid Margin="6">
-        <Border Background="#E91A1F2A"
+        <Border x:Name="CardFrame"
+                Background="#E91A1F2A"
                 BorderBrush="#743C4555"
                 BorderThickness="1"
                 CornerRadius="14"

@@ -168,6 +168,14 @@
                           Checked="ShowNowPlayingCheckBox_Changed"
                           Unchecked="ShowNowPlayingCheckBox_Changed"/>
 
+                <CheckBox x:Name="ShowNowPlayingFrameCheckBox"
+                          Content="Mostrar marco en la tarjeta"
+                          Foreground="#F2F4F8"
+                          FontSize="11"
+                          Margin="0,8,0,0"
+                          Checked="ShowNowPlayingFrameCheckBox_Changed"
+                          Unchecked="ShowNowPlayingFrameCheckBox_Changed"/>
+
                 <TextBlock x:Name="TipText"
                            Text="Consejo: para reducir el consumo, usa videos MP4/H.264 optimizados para la resolución de tu pantalla."
                            Foreground="#748093"

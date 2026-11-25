@@ -40,6 +40,7 @@ public partial class MainWindow : Window
         LanguageComboBox.SelectedValue = Localization.Language;
         PauseOnFullscreenCheckBox.IsChecked = AppSettings.GetPauseOnFullscreen();
         ShowNowPlayingCheckBox.IsChecked = AppSettings.GetShowNowPlaying();
+        ShowNowPlayingFrameCheckBox.IsChecked = AppSettings.GetShowNowPlayingFrame();
         _fullscreenTimer = new System.Windows.Threading.DispatcherTimer(
             System.Windows.Threading.DispatcherPriority.Background)
         {
@@ -159,6 +160,7 @@ public partial class MainWindow : Window
         AutoStartCheckBox.Content = Localization.Get("AutoStart");
         PauseOnFullscreenCheckBox.Content = Localization.Get("PauseOnFullscreen");
         ShowNowPlayingCheckBox.Content = Localization.Get("ShowNowPlaying");
+        ShowNowPlayingFrameCheckBox.Content = Localization.Get("ShowNowPlayingFrame");
         TipText.Text = Localization.Get("Tip");
         _trayOpenItem.Text = Localization.Get("TrayOpen");
         _trayExitItem.Text = Localization.Get("TrayExit");
@@ -276,6 +278,27 @@ public partial class MainWindow : Window
             ShowNowPlayingCheckBox.IsChecked = !enabled;
             _loadingSettings = false;
             SetStatus("StatusMusicFailed", error.Message);
+            MessageBox.Show(this, error.Message, Localization.Get("DialogResourceSettings"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ShowNowPlayingFrameCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings || ShowNowPlayingFrameCheckBox.IsChecked is not bool enabled)
+            return;
+
+        try
+        {
+            AppSettings.SetShowNowPlayingFrame(enabled);
+            _musicOverlay?.SetFrameVisible(enabled);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            _loadingSettings = true;
+            ShowNowPlayingFrameCheckBox.IsChecked = !enabled;
+            _loadingSettings = false;
+            SetStatus("StatusMusicFrameFailed");
             MessageBox.Show(this, error.Message, Localization.Get("DialogResourceSettings"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -656,7 +679,7 @@ public partial class MainWindow : Window
 
         var service = new NowPlayingService(Dispatcher);
         _nowPlayingService = service;
-        _musicOverlay = new MusicOverlayWindow();
+        _musicOverlay = new MusicOverlayWindow(AppSettings.GetShowNowPlayingFrame());
         service.TrackChanged += track =>
         {
             if (_wallpaper is not null)
