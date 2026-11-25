@@ -15,21 +15,41 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Margin="0,0,0,20">
-            <TextBlock Text="LUMA"
-                       Foreground="#8B7BFF"
-                       FontSize="11"
-                       FontWeight="SemiBold"/>
-            <TextBlock Text="Tu escritorio, en movimiento."
-                       Foreground="#F2F4F8"
-                       FontSize="26"
-                       FontWeight="SemiBold"
-                       Margin="0,5,0,0"/>
-            <TextBlock Text="Fondos GIF y MP4, reproducidos con las herramientas de Windows."
-                       Foreground="#9AA5B5"
-                       FontSize="12"
-                       Margin="0,5,0,0"/>
-        </StackPanel>
+        <Grid Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="LUMA"
+                           Foreground="#8B7BFF"
+                           FontSize="11"
+                           FontWeight="SemiBold"/>
+                <TextBlock x:Name="TaglineText"
+                           Text="Tu escritorio, en movimiento."
+                           Foreground="#F2F4F8"
+                           FontSize="26"
+                           FontWeight="SemiBold"
+                           Margin="0,5,0,0"/>
+                <TextBlock x:Name="SubtitleText"
+                           Text="Fondos GIF y MP4, reproducidos con las herramientas de Windows."
+                           Foreground="#9AA5B5"
+                           FontSize="12"
+                           Margin="0,5,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1"
+                        VerticalAlignment="Top"
+                        Margin="16,4,0,0">
+                <TextBlock x:Name="LanguageLabel"
+                           Text="Idioma"
+                           Foreground="#9AA5B5"
+                           FontSize="11"
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="LanguageComboBox"
+                          Width="150"
+                          SelectionChanged="LanguageComboBox_SelectionChanged"/>
+            </StackPanel>
+        </Grid>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -49,7 +69,8 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="VISTA PREVIA"
+                    <TextBlock x:Name="PreviewHeadingText"
+                               Text="VISTA PREVIA"
                                Foreground="#9AA5B5"
                                FontSize="10"
                                FontWeight="SemiBold"
@@ -80,7 +101,8 @@
             </Border>
 
             <StackPanel Grid.Column="1">
-                <TextBlock Text="Fondo actual"
+                <TextBlock x:Name="CurrentWallpaperText"
+                           Text="Fondo actual"
                            Foreground="#F2F4F8"
                            FontSize="15"
                            FontWeight="SemiBold"
@@ -93,11 +115,13 @@
                                TextWrapping="Wrap"/>
                 </Border>
 
-                <Button Content="Elegir GIF o MP4"
+                <Button x:Name="ChooseFileButton"
+                        Content="Elegir GIF o MP4"
                         Click="ChooseFile_Click"
                         Style="{StaticResource SecondaryButton}"
                         Margin="0,12,0,8"/>
-                <Button Content="Aplicar al escritorio"
+                <Button x:Name="ApplyButton"
+                        Content="Aplicar al escritorio"
                         Click="Apply_Click"
                         Style="{StaticResource AccentButton}"/>
 
@@ -113,6 +137,7 @@
                             Click="Pause_Click"
                             Style="{StaticResource SecondaryButton}"/>
                     <Button Grid.Column="2"
+                            x:Name="RemoveButton"
                             Content="Quitar fondo"
                             Click="Remove_Click"
                             Style="{StaticResource SecondaryButton}"/>
@@ -126,19 +151,20 @@
                           Checked="AutoStartCheckBox_Changed"
                           Unchecked="AutoStartCheckBox_Changed"/>
 
+                <TextBlock x:Name="TipText"
+                           Text="Consejo: para reducir el consumo, usa videos MP4/H.264 optimizados para la resolución de tu pantalla."
+                           Foreground="#748093"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Bottom"
+                           Margin="0,16,0,2"/>
+
                 <TextBlock x:Name="StatusText"
                            Text="Listo para empezar"
                            Foreground="#9AA5B5"
                            FontSize="11"
                            TextWrapping="Wrap"
                            Margin="0,16,0,0"/>
-
-                <TextBlock Text="Consejo: para reducir el consumo, usa videos MP4/H.264 optimizados para la resolución de tu pantalla."
-                           Foreground="#748093"
-                           FontSize="10"
-                           TextWrapping="Wrap"
-                           VerticalAlignment="Bottom"
-                           Margin="0,0,0,2"/>
             </StackPanel>
         </Grid>
     </Grid>

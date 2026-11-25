@@ -33,6 +33,19 @@ internal static class AppSettings
         return true;
     }
 
+    public static string GetLanguage()
+    {
+        using var settings = Registry.CurrentUser.OpenSubKey(SettingsKey, writable: false);
+        return Localization.NormalizeLanguage(settings?.GetValue("Language") as string);
+    }
+
+    public static void SetLanguage(string language)
+    {
+        using var settings = Registry.CurrentUser.CreateSubKey(SettingsKey, writable: true)
+            ?? throw new IOException("No se pudo guardar el idioma de Luma Wallpaper.");
+        settings.SetValue("Language", Localization.NormalizeLanguage(language), RegistryValueKind.String);
+    }
+
     public static void SetAutoStart(bool enabled)
     {
         using var run = Registry.CurrentUser.CreateSubKey(RunKey, writable: true)

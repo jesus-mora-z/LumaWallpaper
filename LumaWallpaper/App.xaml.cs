@@ -9,6 +9,7 @@ public partial class App : System.Windows.Application
 
     private void Application_Startup(object sender, StartupEventArgs e)
     {
+        Localization.SetLanguage(AppSettings.GetLanguage());
         var mutex = new Mutex(true, @"Local\LumaWallpaper", out var createdNew);
         if (!createdNew)
         {
@@ -17,7 +18,7 @@ public partial class App : System.Windows.Application
             if (existingWindow == IntPtr.Zero
                 || !PostMessage(existingWindow, LumaWallpaper.MainWindow.ActivateWindowMessage, IntPtr.Zero, IntPtr.Zero))
             {
-                System.Windows.MessageBox.Show("Luma Wallpaper ya se está ejecutando. Usa el icono de la bandeja para abrirlo.",
+                System.Windows.MessageBox.Show(Localization.Get("StatusRunningAlready"),
                     "Luma Wallpaper", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 

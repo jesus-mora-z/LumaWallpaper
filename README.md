@@ -21,6 +21,8 @@ advertencia de SmartScreen.
 - Reproduce videos en bucle y sin audio.
 - Mantiene el fondo activo desde el área de notificaciones.
 - Puede recordar el último fondo e iniciarse con Windows.
+- Incluye interfaz en español, inglés, portugués brasileño, francés, alemán,
+  italiano y japonés; la selección se guarda para la próxima sesión.
 - En equipos compatibles, usa DirectComposition y decodificación de video por
   hardware.
 - Si un video no se puede reproducir, crea una copia H.264 de hasta 1080p y

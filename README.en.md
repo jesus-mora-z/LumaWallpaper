@@ -21,6 +21,8 @@ SmartScreen warning.
 - Loop videos without audio.
 - Keep the wallpaper running from the system tray.
 - Optionally remember the last wallpaper and start with Windows.
+- Includes Spanish, English, Brazilian Portuguese, French, German, Italian, and
+  Japanese; your language choice is saved for the next session.
 - Use DirectComposition and hardware video decoding on supported computers.
 - If a video cannot be played, create a cached H.264 copy at up to 1080p and
   30 FPS without modifying the original file.
@@ -33,8 +35,7 @@ including GIFs on some computers, may temporarily increase resource usage.
 
 1. Download and run `LumaWallpaper-Setup-1.0.0-x64.exe`.
 2. Open Luma Wallpaper from the shortcut created by the installer.
-3. Select a `.gif` or `.mp4` file and click **Aplicar al escritorio**
-   (Apply to desktop). The app interface is currently in Spanish.
+3. Select a `.gif` or `.mp4` file and click **Apply to desktop**.
 
 Closing the window does not exit Luma; it keeps running in the system tray.
 Right-click the tray icon to reopen the window or exit. Use **Iniciar con
