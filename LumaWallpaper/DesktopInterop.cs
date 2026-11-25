@@ -12,6 +12,7 @@ internal static class DesktopInterop
     private const long WsPopup = 0x80000000L;
     private const long WsVisible = 0x10000000L;
     private const long WsExNoRedirectionBitmap = 0x00200000L;
+    private const uint MonitorDefaultToNearest = 2;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoActivate = 0x0010;
@@ -31,6 +32,31 @@ internal static class DesktopInterop
 
     public static (int Width, int Height) GetVirtualScreenSize() =>
         (GetSystemMetrics(78), GetSystemMetrics(79));
+
+    public static bool IsFullscreenApplicationActive()
+    {
+        var foregroundWindow = GetForegroundWindow();
+        if (foregroundWindow == IntPtr.Zero)
+            return false;
+
+        var className = new System.Text.StringBuilder(128);
+        GetClassName(foregroundWindow, className, className.Capacity);
+        if (className.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd")
+            return false;
+
+        var monitor = MonitorFromWindow(foregroundWindow, MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref monitorInfo)
+            || !GetWindowRect(foregroundWindow, out var windowRect))
+            return false;
+
+        const int edgeTolerance = 8;
+        var bounds = monitorInfo.Monitor;
+        return windowRect.Left <= bounds.Left + edgeTolerance
+            && windowRect.Top <= bounds.Top + edgeTolerance
+            && windowRect.Right >= bounds.Right - edgeTolerance
+            && windowRect.Bottom >= bounds.Bottom - edgeTolerance;
+    }
 
     public static void AttachToDesktop(IntPtr window)
     {
@@ -184,6 +210,15 @@ internal static class DesktopInterop
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetClassName(IntPtr window, System.Text.StringBuilder className, int maxCount);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetMonitorInfoW", SetLastError = true)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
+
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? className, string? windowName);
 
@@ -240,4 +275,12 @@ internal static class DesktopInterop
         public int Bottom;
     }
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect Work;
+        public uint Flags;
+    }
 }

@@ -13,6 +13,7 @@ public partial class WallpaperWindow : Window
     private GifAnimation? _gif;
     private DirectCompositionWallpaper? _compositionWallpaper;
     private bool _isPaused;
+    private bool _isPausedAutomatically;
     private bool _isClosed;
     private int _readyReported;
 
@@ -43,7 +44,9 @@ public partial class WallpaperWindow : Window
         Closed += (_, _) => ReleaseMedia();
     }
 
-    public bool IsPaused => _isPaused;
+    public bool IsPaused => _isPaused || _isPausedAutomatically;
+
+    public bool IsPausedAutomatically => _isPausedAutomatically;
 
     public void ShowOnDesktop()
     {
@@ -63,6 +66,24 @@ public partial class WallpaperWindow : Window
     public void Pause()
     {
         _isPaused = true;
+        PausePlayback();
+    }
+
+    public void SetAutomaticPause(bool paused)
+    {
+        _isPausedAutomatically = paused;
+        if (paused)
+        {
+            PausePlayback();
+        }
+        else if (!_isPaused)
+        {
+            ResumePlayback();
+        }
+    }
+
+    private void PausePlayback()
+    {
         _gif?.Pause();
         _compositionWallpaper?.Pause();
         if (_compositionWallpaper is null)
@@ -72,6 +93,14 @@ public partial class WallpaperWindow : Window
     public void Resume()
     {
         _isPaused = false;
+        if (_isPausedAutomatically)
+            return;
+
+        ResumePlayback();
+    }
+
+    private void ResumePlayback()
+    {
         _gif?.Resume();
         _compositionWallpaper?.Resume();
         if (_gif is null && _compositionWallpaper is null)
@@ -81,14 +110,14 @@ public partial class WallpaperWindow : Window
     private void WallpaperVideo_MediaOpened(object sender, RoutedEventArgs e)
     {
         ReportPlaybackReady();
-        if (!_isPaused)
+        if (!IsPaused)
             WallpaperVideo.Play();
     }
 
     private void WallpaperVideo_MediaEnded(object sender, RoutedEventArgs e)
     {
         WallpaperVideo.Position = TimeSpan.Zero;
-        if (!_isPaused)
+        if (!IsPaused)
             WallpaperVideo.Play();
     }
 

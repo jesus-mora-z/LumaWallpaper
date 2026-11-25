@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private readonly Forms.ContextMenuStrip _trayMenu;
     private readonly Forms.ToolStripMenuItem _trayOpenItem;
     private readonly Forms.ToolStripMenuItem _trayExitItem;
+    private readonly System.Windows.Threading.DispatcherTimer _fullscreenTimer;
     private bool _loadingSettings = true;
     private bool _allowClose;
     private bool _handlingPlaybackFailure;
@@ -35,6 +36,13 @@ public partial class MainWindow : Window
         LanguageComboBox.ItemsSource = Localization.Languages;
         LanguageComboBox.SelectedValuePath = nameof(LanguageOption.Code);
         LanguageComboBox.SelectedValue = Localization.Language;
+        PauseOnFullscreenCheckBox.IsChecked = AppSettings.GetPauseOnFullscreen();
+        _fullscreenTimer = new System.Windows.Threading.DispatcherTimer(
+            System.Windows.Threading.DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _fullscreenTimer.Tick += FullscreenTimer_Tick;
         var handle = new WindowInteropHelper(this).EnsureHandle();
         HwndSource.FromHwnd(handle)?.AddHook(WindowMessageHook);
 
@@ -70,6 +78,7 @@ public partial class MainWindow : Window
         _loadingSettings = false;
         Closed += (_, _) =>
         {
+            _fullscreenTimer.Stop();
             StopPreview();
             RemoveWallpaper();
             _trayIcon.Visible = false;
@@ -144,6 +153,7 @@ public partial class MainWindow : Window
         ApplyButton.Content = Localization.Get("Apply");
         RemoveButton.Content = Localization.Get("Remove");
         AutoStartCheckBox.Content = Localization.Get("AutoStart");
+        PauseOnFullscreenCheckBox.Content = Localization.Get("PauseOnFullscreen");
         TipText.Text = Localization.Get("Tip");
         _trayOpenItem.Text = Localization.Get("TrayOpen");
         _trayExitItem.Text = Localization.Get("TrayExit");
@@ -196,6 +206,41 @@ public partial class MainWindow : Window
             _loadingSettings = false;
             SetStatus("StatusAutoFailed");
             MessageBox.Show(this, error.Message, Localization.Get("DialogStartupSettings"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void PauseOnFullscreenCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings || PauseOnFullscreenCheckBox.IsChecked is not bool enabled)
+            return;
+
+        try
+        {
+            AppSettings.SetPauseOnFullscreen(enabled);
+            if (enabled)
+            {
+                UpdateFullscreenPause();
+                SetStatus(_wallpaper?.IsPausedAutomatically == true
+                    ? "StatusFullscreenPaused"
+                    : "StatusFullscreenPauseEnabled");
+            }
+            else
+            {
+                _wallpaper?.SetAutomaticPause(false);
+                UpdatePauseButton();
+                SetStatus("StatusFullscreenPauseDisabled");
+            }
+
+            UpdateFullscreenTimer();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            _loadingSettings = true;
+            PauseOnFullscreenCheckBox.IsChecked = !enabled;
+            _loadingSettings = false;
+            SetStatus("StatusFullscreenPauseFailed");
+            MessageBox.Show(this, error.Message, Localization.Get("DialogResourceSettings"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -280,6 +325,8 @@ public partial class MainWindow : Window
             RemoveWallpaper();
             _wallpaper = nextWallpaper;
             nextWallpaper = null;
+            UpdateFullscreenTimer();
+            UpdateFullscreenPause();
             StopPreview();
             UpdatePauseButton();
             SetStatus("StatusApplying", Path.GetFileName(sourcePath));
@@ -319,7 +366,9 @@ public partial class MainWindow : Window
         {
             _wallpaper.Resume();
             UpdatePauseButton();
-            SetStatus("StatusWallpaperMoving");
+            SetStatus(_wallpaper.IsPaused
+                ? "StatusFullscreenPaused"
+                : "StatusWallpaperMoving");
         }
         else
         {
@@ -454,8 +503,17 @@ public partial class MainWindow : Window
             return;
 
         e.Cancel = true;
+        PausePreview();
         Hide();
         SetStatus("StatusBackgroundTray");
+    }
+
+    private void Window_StateChanged(object? sender, EventArgs e)
+    {
+        if (WindowState == WindowState.Minimized)
+            PausePreview();
+        else if (IsVisible)
+            ResumePreview();
     }
 
     private void ShowWindow()
@@ -464,6 +522,7 @@ public partial class MainWindow : Window
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
         Activate();
+        ResumePreview();
     }
 
     private IntPtr WindowMessageHook(
@@ -503,8 +562,52 @@ public partial class MainWindow : Window
         PreviewPlaceholder.Visibility = Visibility.Visible;
     }
 
+    private void PausePreview()
+    {
+        if (PreviewVideo.Source is not null)
+            PreviewVideo.Pause();
+        _previewGif?.Pause();
+    }
+
+    private void ResumePreview()
+    {
+        if (PreviewVideo.Source is not null)
+            PreviewVideo.Play();
+        _previewGif?.Resume();
+    }
+
+    private void FullscreenTimer_Tick(object? sender, EventArgs e) =>
+        UpdateFullscreenPause();
+
+    private void UpdateFullscreenTimer()
+    {
+        if (_wallpaper is not null && PauseOnFullscreenCheckBox.IsChecked == true)
+            _fullscreenTimer.Start();
+        else
+            _fullscreenTimer.Stop();
+    }
+
+    private void UpdateFullscreenPause()
+    {
+        if (_wallpaper is null || PauseOnFullscreenCheckBox.IsChecked != true)
+            return;
+
+        var pausedAutomatically = DesktopInterop.IsFullscreenApplicationActive();
+        if (_wallpaper.IsPausedAutomatically == pausedAutomatically)
+            return;
+
+        _wallpaper.SetAutomaticPause(pausedAutomatically);
+        UpdatePauseButton();
+        SetStatus(pausedAutomatically
+            ? "StatusFullscreenPaused"
+            : _wallpaper.IsPaused
+                ? "StatusWallpaperPaused"
+                : "StatusWallpaperMoving");
+    }
+
     private void RemoveWallpaper()
     {
+        _fullscreenTimer.Stop();
         _wallpaper?.Close();
         _wallpaper = null;
     }

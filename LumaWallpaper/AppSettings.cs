@@ -46,6 +46,19 @@ internal static class AppSettings
         settings.SetValue("Language", Localization.NormalizeLanguage(language), RegistryValueKind.String);
     }
 
+    public static bool GetPauseOnFullscreen()
+    {
+        using var settings = Registry.CurrentUser.OpenSubKey(SettingsKey, writable: false);
+        return settings?.GetValue("PauseOnFullscreen") is not int value || value != 0;
+    }
+
+    public static void SetPauseOnFullscreen(bool enabled)
+    {
+        using var settings = Registry.CurrentUser.CreateSubKey(SettingsKey, writable: true)
+            ?? throw new IOException("No se pudo guardar la configuración de ahorro de recursos.");
+        settings.SetValue("PauseOnFullscreen", enabled ? 1 : 0, RegistryValueKind.DWord);
+    }
+
     public static void SetAutoStart(bool enabled)
     {
         using var run = Registry.CurrentUser.CreateSubKey(RunKey, writable: true)

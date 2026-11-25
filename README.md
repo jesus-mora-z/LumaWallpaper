@@ -21,6 +21,9 @@ advertencia de SmartScreen.
 - Reproduce videos en bucle y sin audio.
 - Mantiene el fondo activo desde el área de notificaciones.
 - Puede recordar el último fondo e iniciarse con Windows.
+- Pausa el fondo automáticamente mientras una aplicación está a pantalla completa
+  para reducir el uso de CPU y GPU; esta opción se puede desactivar.
+- Pausa la vista previa al ocultar o minimizar la ventana.
 - Incluye interfaz en español, inglés, portugués brasileño, francés, alemán,
   italiano y japonés; la selección se guarda para la próxima sesión.
 - En equipos compatibles, usa DirectComposition y decodificación de video por
@@ -35,7 +38,7 @@ temporalmente el uso de recursos.
 
 ## Instalar y usar
 
-1. Descarga y ejecuta `LumaWallpaper-Setup-1.1.0-x64.exe`.
+1. Descarga y ejecuta `LumaWallpaper-Setup-1.2.0-x64.exe`.
 2. Abre Luma Wallpaper desde el acceso directo creado por el instalador.
 3. Selecciona un archivo `.gif` o `.mp4` y pulsa **Aplicar al escritorio**.
 
@@ -51,7 +54,7 @@ Necesitas el SDK de .NET 10 y Inno Setup 6. Desde PowerShell, ejecuta:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1
 ```
 
-El instalador se genera en `dist\LumaWallpaper-Setup-1.1.0-x64.exe`. La
+El instalador se genera en `dist\LumaWallpaper-Setup-1.2.0-x64.exe`. La
 publicación es autónoma, así que los equipos de destino no necesitan instalar
 .NET por separado. Para iniciar el proyecto durante el desarrollo, usa
 `Iniciar Luma Wallpaper.bat`.
