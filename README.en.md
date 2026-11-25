@@ -9,7 +9,7 @@ can start with Windows.
 ## Download
 
 - [Download the latest version from GitHub Releases](https://github.com/jesus-mora-z/LumaWallpaper/releases/latest)
-- [Alternative download on MediaFire](https://www.mediafire.com/file/fvr62lncjaik3ma/LumaWallpaper-Setup-1.0.0-x64.exe/file)
+- [Older version 1.0.0 on MediaFire](https://www.mediafire.com/file/fvr62lncjaik3ma/LumaWallpaper-Setup-1.0.0-x64.exe/file)
 
 The Windows x64 installer bundles .NET and does not require administrator
 privileges. The installer is not digitally signed, so Windows may show a
@@ -33,7 +33,7 @@ including GIFs on some computers, may temporarily increase resource usage.
 
 ## Install and use
 
-1. Download and run `LumaWallpaper-Setup-1.0.0-x64.exe`.
+1. Download and run `LumaWallpaper-Setup-1.1.0-x64.exe`.
 2. Open Luma Wallpaper from the shortcut created by the installer.
 3. Select a `.gif` or `.mp4` file and click **Apply to desktop**.
 
@@ -49,7 +49,7 @@ You need the .NET 10 SDK and Inno Setup 6. From PowerShell, run:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1
 ```
 
-The installer is created at `dist\LumaWallpaper-Setup-1.0.0-x64.exe`. The
+The installer is created at `dist\LumaWallpaper-Setup-1.1.0-x64.exe`. The
 published app is self-contained, so target computers do not need a separate
 .NET installation. To run the project during development, use
 `Iniciar Luma Wallpaper.bat`.
