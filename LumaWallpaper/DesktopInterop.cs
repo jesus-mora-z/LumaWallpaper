@@ -90,30 +90,10 @@ internal static class DesktopInterop
         }
     }
 
-    public static void AttachOverlayToDesktop(IntPtr window, int width, int height, int margin)
+    public static void PositionOverlayOnDesktop(IntPtr window, int width, int height, int margin)
     {
-        var progman = FindTopLevelWindow("Progman");
-        if (progman == IntPtr.Zero)
-            throw new InvalidOperationException("Windows no encontró la ventana del escritorio.");
-
-        SendMessageTimeout(progman, WorkerMessage, new UIntPtr(0xD), new IntPtr(1),
-            SmtoNormal, 1000, out _);
-
-        var modernDesktop = (GetWindowStyle(progman, GwlExStyle) & WsExNoRedirectionBitmap) != 0;
-        var host = modernDesktop ? progman : FindClassicDesktopHost(progman);
-        AttachWindow(window, host);
-        if (!GetWindowRect(host, out var parentRect))
-            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-
-        var x = GetSystemMetrics(0) - width - margin - parentRect.Left;
-        var y = margin - parentRect.Top;
-        var insertAfter = modernDesktop
-            ? FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null)
-            : IntPtr.Zero;
-        if (modernDesktop && insertAfter == IntPtr.Zero)
-            throw new InvalidOperationException("Windows no encontró la capa de iconos del escritorio.");
-
-        if (!SetWindowPos(window, insertAfter, x, y, width, height,
+        var x = GetSystemMetrics(0) - width - margin;
+        if (!SetWindowPos(window, IntPtr.Zero, x, margin, width, height,
                 SwpNoActivate | SwpFrameChanged | SwpShowWindow))
         {
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());

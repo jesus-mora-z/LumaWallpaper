@@ -41,7 +41,7 @@ public partial class MusicOverlayWindow : Window
         if (!IsVisible)
             return;
 
-        DesktopInterop.AttachOverlayToDesktop(
+        DesktopInterop.PositionOverlayOnDesktop(
             new WindowInteropHelper(this).Handle,
             OverlayWidth,
             OverlayHeight,
