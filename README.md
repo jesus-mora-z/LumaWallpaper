@@ -41,7 +41,7 @@ temporalmente el uso de recursos.
 
 ## Instalar y usar
 
-1. Descarga y ejecuta `LumaWallpaper-Setup-1.3.0-x64.exe`.
+1. Descarga y ejecuta `LumaWallpaper-Setup-1.3.1-x64.exe`.
 2. Abre Luma Wallpaper desde el acceso directo creado por el instalador.
 3. Selecciona un archivo `.gif` o `.mp4` y pulsa **Aplicar al escritorio**.
 
@@ -59,7 +59,7 @@ Necesitas el SDK de .NET 10 y Inno Setup 6. Desde PowerShell, ejecuta:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1
 ```
 
-El instalador se genera en `dist\LumaWallpaper-Setup-1.3.0-x64.exe`. La
+El instalador se genera en `dist\LumaWallpaper-Setup-1.3.1-x64.exe`. La
 publicación es autónoma, así que los equipos de destino no necesitan instalar
 .NET por separado. Para iniciar el proyecto durante el desarrollo, usa
 `Iniciar Luma Wallpaper.bat`.

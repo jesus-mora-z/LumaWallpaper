@@ -672,7 +672,13 @@ public partial class MainWindow : Window
                 }
             }
         };
-        service.Failed += message => SetStatus("StatusMusicFailed", message);
+        service.Failed += message =>
+        {
+            SetStatus("StatusMusicFailed", message);
+            _trayIcon.ShowBalloonTip(5000, Localization.Get("TrayIconText"),
+                Localization.Get("StatusMusicFailed", message),
+                Forms.ToolTipIcon.Error);
+        };
 
         try
         {
@@ -684,6 +690,9 @@ public partial class MainWindow : Window
             if (ReferenceEquals(_nowPlayingService, service))
                 StopNowPlaying();
             SetStatus("StatusMusicFailed", error.Message);
+            _trayIcon.ShowBalloonTip(5000, Localization.Get("TrayIconText"),
+                Localization.Get("StatusMusicFailed", error.Message),
+                Forms.ToolTipIcon.Error);
         }
     }
 

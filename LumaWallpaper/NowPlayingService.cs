@@ -123,11 +123,17 @@ internal sealed class NowPlayingService : IDisposable
     private static GlobalSystemMediaTransportControlsSession? SelectPlayingSession(
         GlobalSystemMediaTransportControlsSessionManager manager)
     {
+        var sessions = manager.GetSessions();
+        var youtubeMusic = sessions.FirstOrDefault(session =>
+            IsPlayingExternalSession(session) && IsYouTubeMusicSession(session));
+        if (youtubeMusic is not null)
+            return youtubeMusic;
+
         var current = manager.GetCurrentSession();
         if (IsPlayingExternalSession(current))
             return current;
 
-        return manager.GetSessions().FirstOrDefault(IsPlayingExternalSession);
+        return sessions.FirstOrDefault(IsPlayingExternalSession);
     }
 
     private static bool IsPlayingExternalSession(
@@ -135,6 +141,11 @@ internal sealed class NowPlayingService : IDisposable
         session is not null
         && session.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing
         && !session.SourceAppUserModelId.Contains("LumaWallpaper", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsYouTubeMusicSession(
+        GlobalSystemMediaTransportControlsSession session) =>
+        session.SourceAppUserModelId.Contains("music.youtube.com", StringComparison.OrdinalIgnoreCase)
+        || session.SourceAppUserModelId.Contains("youtube music", StringComparison.OrdinalIgnoreCase);
 
     private static async Task<BitmapSource?> ReadArtworkAsync(
         IRandomAccessStreamReference? thumbnail)
