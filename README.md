@@ -7,6 +7,10 @@ fondo al iniciar sesion en Windows.
 
 ## Instalar y compartir
 
+Descarga la version actual desde la [Release oficial de GitHub](https://github.com/jesus-mora-z/LumaWallpaper/releases/latest).
+Tambien hay una copia alternativa del instalador en
+[MediaFire](https://www.mediafire.com/file/fvr62lncjaik3ma/LumaWallpaper-Setup-1.0.0-x64.exe/file).
+
 El instalador para Windows x64 se genera con
 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1`
 y queda en `dist\LumaWallpaper-Setup-1.0.0-x64.exe`. La publicacion incluye
