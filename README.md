@@ -24,6 +24,9 @@ advertencia de SmartScreen.
 - Pausa el fondo automáticamente mientras una aplicación está a pantalla completa
   para reducir el uso de CPU y GPU; esta opción se puede desactivar.
 - Pausa la vista previa al ocultar o minimizar la ventana.
+- Puede mostrar en la esquina superior derecha la portada, el título y el artista
+  de la sesión multimedia activa de Windows. YouTube Music funciona cuando el
+  navegador o la aplicación publica esos datos.
 - Incluye interfaz en español, inglés, portugués brasileño, francés, alemán,
   italiano y japonés; la selección se guarda para la próxima sesión.
 - En equipos compatibles, usa DirectComposition y decodificación de video por
@@ -38,13 +41,15 @@ temporalmente el uso de recursos.
 
 ## Instalar y usar
 
-1. Descarga y ejecuta `LumaWallpaper-Setup-1.2.0-x64.exe`.
+1. Descarga y ejecuta `LumaWallpaper-Setup-1.3.0-x64.exe`.
 2. Abre Luma Wallpaper desde el acceso directo creado por el instalador.
 3. Selecciona un archivo `.gif` o `.mp4` y pulsa **Aplicar al escritorio**.
 
 La ventana se puede cerrar sin salir de Luma: la aplicación queda en el área de
 notificaciones. Haz clic derecho en el icono para volver a abrirla o salir.
-La opción **Iniciar con Windows** controla el inicio automático.
+La opción **Iniciar con Windows** controla el inicio automático. **Mostrar
+música en el escritorio** activa o desactiva la tarjeta de la sesión multimedia
+actual.
 
 ## Crear el instalador
 
@@ -54,7 +59,7 @@ Necesitas el SDK de .NET 10 y Inno Setup 6. Desde PowerShell, ejecuta:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1
 ```
 
-El instalador se genera en `dist\LumaWallpaper-Setup-1.2.0-x64.exe`. La
+El instalador se genera en `dist\LumaWallpaper-Setup-1.3.0-x64.exe`. La
 publicación es autónoma, así que los equipos de destino no necesitan instalar
 .NET por separado. Para iniciar el proyecto durante el desarrollo, usa
 `Iniciar Luma Wallpaper.bat`.

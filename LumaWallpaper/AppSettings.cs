@@ -59,6 +59,19 @@ internal static class AppSettings
         settings.SetValue("PauseOnFullscreen", enabled ? 1 : 0, RegistryValueKind.DWord);
     }
 
+    public static bool GetShowNowPlaying()
+    {
+        using var settings = Registry.CurrentUser.OpenSubKey(SettingsKey, writable: false);
+        return settings?.GetValue("ShowNowPlaying") is not int value || value != 0;
+    }
+
+    public static void SetShowNowPlaying(bool enabled)
+    {
+        using var settings = Registry.CurrentUser.CreateSubKey(SettingsKey, writable: true)
+            ?? throw new IOException("No se pudo guardar la configuración de música.");
+        settings.SetValue("ShowNowPlaying", enabled ? 1 : 0, RegistryValueKind.DWord);
+    }
+
     public static void SetAutoStart(bool enabled)
     {
         using var run = Registry.CurrentUser.CreateSubKey(RunKey, writable: true)

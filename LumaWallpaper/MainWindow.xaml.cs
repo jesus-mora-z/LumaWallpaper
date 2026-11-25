@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private string? _previewVideoPath;
     private WallpaperWindow? _wallpaper;
     private GifAnimation? _previewGif;
+    private NowPlayingService? _nowPlayingService;
+    private MusicOverlayWindow? _musicOverlay;
     private readonly Forms.NotifyIcon _trayIcon;
     private readonly Forms.ContextMenuStrip _trayMenu;
     private readonly Forms.ToolStripMenuItem _trayOpenItem;
@@ -37,6 +39,7 @@ public partial class MainWindow : Window
         LanguageComboBox.SelectedValuePath = nameof(LanguageOption.Code);
         LanguageComboBox.SelectedValue = Localization.Language;
         PauseOnFullscreenCheckBox.IsChecked = AppSettings.GetPauseOnFullscreen();
+        ShowNowPlayingCheckBox.IsChecked = AppSettings.GetShowNowPlaying();
         _fullscreenTimer = new System.Windows.Threading.DispatcherTimer(
             System.Windows.Threading.DispatcherPriority.Background)
         {
@@ -80,6 +83,7 @@ public partial class MainWindow : Window
         {
             _fullscreenTimer.Stop();
             StopPreview();
+            StopNowPlaying();
             RemoveWallpaper();
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
@@ -154,6 +158,7 @@ public partial class MainWindow : Window
         RemoveButton.Content = Localization.Get("Remove");
         AutoStartCheckBox.Content = Localization.Get("AutoStart");
         PauseOnFullscreenCheckBox.Content = Localization.Get("PauseOnFullscreen");
+        ShowNowPlayingCheckBox.Content = Localization.Get("ShowNowPlaying");
         TipText.Text = Localization.Get("Tip");
         _trayOpenItem.Text = Localization.Get("TrayOpen");
         _trayExitItem.Text = Localization.Get("TrayExit");
@@ -245,6 +250,37 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ShowNowPlayingCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings || ShowNowPlayingCheckBox.IsChecked is not bool enabled)
+            return;
+
+        try
+        {
+            AppSettings.SetShowNowPlaying(enabled);
+            if (enabled)
+            {
+                if (_wallpaper is not null)
+                    _ = StartNowPlayingAsync();
+                SetStatus("StatusMusicEnabled");
+            }
+            else
+            {
+                StopNowPlaying();
+                SetStatus("StatusMusicDisabled");
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            _loadingSettings = true;
+            ShowNowPlayingCheckBox.IsChecked = !enabled;
+            _loadingSettings = false;
+            SetStatus("StatusMusicFailed", error.Message);
+            MessageBox.Show(this, error.Message, Localization.Get("DialogResourceSettings"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ChooseFile_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -330,6 +366,9 @@ public partial class MainWindow : Window
             StopPreview();
             UpdatePauseButton();
             SetStatus("StatusApplying", Path.GetFileName(sourcePath));
+            PositionMusicOverlay();
+            if (ShowNowPlayingCheckBox.IsChecked == true)
+                _ = StartNowPlayingAsync();
             return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException or ArgumentException or FormatException or System.ComponentModel.Win32Exception)
@@ -381,6 +420,7 @@ public partial class MainWindow : Window
     private void Remove_Click(object sender, RoutedEventArgs e)
     {
         RemoveWallpaper();
+        StopNowPlaying();
         UpdatePauseButton();
         SetStatus("StatusWallpaperRemoved");
     }
@@ -431,6 +471,7 @@ public partial class MainWindow : Window
                         _selectedPath = convertedPath;
                         SetSelectedFile(sourcePath, converted: true);
                         RemoveWallpaper();
+                        StopNowPlaying();
                         ApplySelectedWallpaper();
                         return;
                     }
@@ -442,6 +483,7 @@ public partial class MainWindow : Window
             }
 
             RemoveWallpaper();
+            StopNowPlaying();
             ShowVideoError(message);
         }));
     }
@@ -545,6 +587,7 @@ public partial class MainWindow : Window
     {
         _allowClose = true;
         StopPreview();
+        StopNowPlaying();
         RemoveWallpaper();
         _trayIcon.Visible = false;
         Close();
@@ -603,6 +646,69 @@ public partial class MainWindow : Window
             : _wallpaper.IsPaused
                 ? "StatusWallpaperPaused"
                 : "StatusWallpaperMoving");
+    }
+
+    private async Task StartNowPlayingAsync()
+    {
+        if (_wallpaper is null || ShowNowPlayingCheckBox.IsChecked != true
+            || _nowPlayingService is not null)
+            return;
+
+        var service = new NowPlayingService(Dispatcher);
+        _nowPlayingService = service;
+        _musicOverlay = new MusicOverlayWindow();
+        service.TrackChanged += track =>
+        {
+            if (_wallpaper is not null)
+            {
+                try
+                {
+                    _musicOverlay?.ShowTrack(track);
+                }
+                catch (Exception error) when (error is InvalidOperationException
+                    or System.ComponentModel.Win32Exception)
+                {
+                    SetStatus("StatusMusicFailed", error.Message);
+                }
+            }
+        };
+        service.Failed += message => SetStatus("StatusMusicFailed", message);
+
+        try
+        {
+            await service.StartAsync();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            if (ReferenceEquals(_nowPlayingService, service))
+                StopNowPlaying();
+            SetStatus("StatusMusicFailed", error.Message);
+        }
+    }
+
+    private void StopNowPlaying()
+    {
+        _nowPlayingService?.Dispose();
+        _nowPlayingService = null;
+        if (_musicOverlay is not null)
+        {
+            _musicOverlay.Close();
+            _musicOverlay = null;
+        }
+    }
+
+    private void PositionMusicOverlay()
+    {
+        try
+        {
+            _musicOverlay?.PositionOnDesktop();
+        }
+        catch (Exception error) when (error is InvalidOperationException
+            or System.ComponentModel.Win32Exception)
+        {
+            SetStatus("StatusMusicFailed", error.Message);
+        }
     }
 
     private void RemoveWallpaper()

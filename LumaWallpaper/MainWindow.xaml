@@ -160,6 +160,14 @@
                           Checked="PauseOnFullscreenCheckBox_Changed"
                           Unchecked="PauseOnFullscreenCheckBox_Changed"/>
 
+                <CheckBox x:Name="ShowNowPlayingCheckBox"
+                          Content="Mostrar música en el escritorio"
+                          Foreground="#F2F4F8"
+                          FontSize="11"
+                          Margin="0,10,0,0"
+                          Checked="ShowNowPlayingCheckBox_Changed"
+                          Unchecked="ShowNowPlayingCheckBox_Changed"/>
+
                 <TextBlock x:Name="TipText"
                            Text="Consejo: para reducir el consumo, usa videos MP4/H.264 optimizados para la resolución de tu pantalla."
                            Foreground="#748093"
