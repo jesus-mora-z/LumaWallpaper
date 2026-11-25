@@ -1,0 +1,5 @@
+LumaWallpaper/bin/
+LumaWallpaper/obj/
+.vs/
+artifacts/
+dist/

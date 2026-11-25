@@ -1,0 +1,441 @@
+using Microsoft.Win32;
+using System.IO;
+using System.Windows;
+using System.Windows.Interop;
+using MessageBox = System.Windows.MessageBox;
+using Forms = System.Windows.Forms;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+
+namespace LumaWallpaper;
+
+public partial class MainWindow : Window
+{
+    internal const int ActivateWindowMessage = 0x8000 + 0x3A1;
+
+    private string? _selectedPath;
+    private string? _sourcePath;
+    private string? _previewVideoPath;
+    private WallpaperWindow? _wallpaper;
+    private GifAnimation? _previewGif;
+    private readonly Forms.NotifyIcon _trayIcon;
+    private bool _loadingSettings = true;
+    private bool _allowClose;
+    private bool _handlingPlaybackFailure;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        var handle = new WindowInteropHelper(this).EnsureHandle();
+        HwndSource.FromHwnd(handle)?.AddHook(WindowMessageHook);
+
+        var trayMenu = new Forms.ContextMenuStrip();
+        trayMenu.Items.Add("Abrir Luma Wallpaper", null, (_, _) => ShowWindow());
+        trayMenu.Items.Add("Salir", null, (_, _) => ExitApplication());
+        _trayIcon = new Forms.NotifyIcon
+        {
+            Icon = System.Drawing.SystemIcons.Application,
+            Text = "Luma Wallpaper",
+            ContextMenuStrip = trayMenu,
+            Visible = true
+        };
+        _trayIcon.DoubleClick += (_, _) => Dispatcher.BeginInvoke(new Action(ShowWindow));
+
+        try
+        {
+            AutoStartCheckBox.IsChecked = AppSettings.InitializeAutoStart();
+        }
+
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            AutoStartCheckBox.IsChecked = false;
+            StatusText.Text = "No se pudo configurar el inicio automático.";
+            MessageBox.Show(this, error.Message, "Configuración de inicio",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        _loadingSettings = false;
+        Closed += (_, _) =>
+        {
+            StopPreview();
+            RemoveWallpaper();
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            trayMenu.Dispose();
+        };
+    }
+
+    public void StartInBackground()
+    {
+        try
+        {
+            _selectedPath = AppSettings.GetLastWallpaper();
+            _sourcePath = _selectedPath;
+            if (string.IsNullOrWhiteSpace(_sourcePath))
+            {
+                StatusText.Text = "En segundo plano. Elige un fondo para aplicarlo.";
+                return;
+            }
+
+            if (!File.Exists(_sourcePath))
+            {
+                StatusText.Text = "El fondo guardado ya no existe. Elige otro desde la bandeja.";
+                return;
+            }
+
+            SelectedFileText.Text = Path.GetFileName(_sourcePath);
+            _selectedPath = VideoTranscoder.GetCachedPath(_sourcePath) ?? _sourcePath;
+            ApplySelectedWallpaper();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            StatusText.Text = "No se pudo restaurar el fondo guardado.";
+            _trayIcon.ShowBalloonTip(5000, "Luma Wallpaper",
+                error.Message, Forms.ToolTipIcon.Error);
+        }
+    }
+
+    private void AutoStartCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings || AutoStartCheckBox.IsChecked is not bool enabled)
+            return;
+
+        try
+        {
+            AppSettings.SetAutoStart(enabled);
+            StatusText.Text = enabled
+                ? "Luma Wallpaper se iniciará con Windows."
+                : "El inicio automático está desactivado.";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            _loadingSettings = true;
+            AutoStartCheckBox.IsChecked = !enabled;
+            _loadingSettings = false;
+            StatusText.Text = "No se pudo cambiar el inicio automático.";
+            MessageBox.Show(this, error.Message, "Configuración de inicio",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ChooseFile_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Elige un fondo animado",
+            Filter = "Fondos animados (*.gif;*.mp4)|*.gif;*.mp4|GIF (*.gif)|*.gif|Video MP4 (*.mp4)|*.mp4",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            StopPreview();
+            _selectedPath = dialog.FileName;
+            _sourcePath = _selectedPath;
+            SelectedFileText.Text = Path.GetFileName(_selectedPath);
+            PreviewPlaceholder.Visibility = Visibility.Collapsed;
+
+            if (IsGif(_selectedPath))
+            {
+                PreviewVideo.Visibility = Visibility.Collapsed;
+                PreviewGif.Visibility = Visibility.Visible;
+                PreviewGif.Source = null;
+                _previewGif = GifAnimation.Create(_selectedPath, frame =>
+                    PreviewGif.Dispatcher.Invoke(() => PreviewGif.Source = frame));
+            }
+            else
+            {
+                PreviewGif.Source = null;
+                PreviewGif.Visibility = Visibility.Collapsed;
+                PreviewVideo.Visibility = Visibility.Visible;
+                _previewVideoPath = _selectedPath;
+                PreviewVideo.Source = new Uri(_selectedPath, UriKind.Absolute);
+            }
+
+            StatusText.Text = _wallpaper is null
+                ? "Fondo listo para aplicar"
+                : "La vista previa cambió; el fondo activo sigue igual hasta aplicar.";
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException or ArgumentException or FormatException)
+        {
+            StopPreview();
+            StatusText.Text = "No se pudo abrir el archivo seleccionado.";
+            MessageBox.Show(this, error.Message, "No se pudo abrir el fondo",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void Apply_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_selectedPath))
+        {
+            MessageBox.Show(this, "Primero elige un archivo GIF o MP4.",
+                "Elige un fondo", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        ApplySelectedWallpaper();
+    }
+
+    private bool ApplySelectedWallpaper()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedPath))
+            return false;
+
+        WallpaperWindow? nextWallpaper = null;
+        try
+        {
+            var sourcePath = _sourcePath ?? _selectedPath;
+            var playbackPath = VideoTranscoder.GetCachedPath(sourcePath) ?? _selectedPath;
+            nextWallpaper = new WallpaperWindow(
+                playbackPath,
+                ShowPlaybackError,
+                () => Dispatcher.BeginInvoke(new Action(() => MarkWallpaperReady(sourcePath))));
+            nextWallpaper.ShowOnDesktop();
+            AppSettings.SetLastWallpaper(sourcePath);
+            RemoveWallpaper();
+            _wallpaper = nextWallpaper;
+            nextWallpaper = null;
+            StopPreview();
+            PauseButton.Content = "Pausar";
+            StatusText.Text = $"Aplicando fondo · {Path.GetFileName(sourcePath)}";
+            return true;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException or ArgumentException or FormatException or System.ComponentModel.Win32Exception)
+        {
+            nextWallpaper?.Close();
+            StatusText.Text = "No se pudo aplicar el fondo.";
+            if (IsVisible)
+                MessageBox.Show(this, error.Message, "No se pudo aplicar el fondo",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            else
+                _trayIcon.ShowBalloonTip(5000, "Luma Wallpaper",
+                    error.Message, Forms.ToolTipIcon.Error);
+            return false;
+        }
+    }
+
+    private void MarkWallpaperReady(string sourcePath)
+    {
+        if (!string.Equals(_sourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        StatusText.Text = $"Fondo visible · {Path.GetFileName(sourcePath)}";
+    }
+
+    private void Pause_Click(object sender, RoutedEventArgs e)
+    {
+        if (_wallpaper is null)
+        {
+            StatusText.Text = "Aplica un fondo antes de pausarlo.";
+            return;
+        }
+
+        if (_wallpaper.IsPaused)
+        {
+            _wallpaper.Resume();
+            PauseButton.Content = "Pausar";
+            StatusText.Text = "Fondo en movimiento";
+        }
+        else
+        {
+            _wallpaper.Pause();
+            PauseButton.Content = "Reanudar";
+            StatusText.Text = "Fondo pausado";
+        }
+    }
+
+    private void Remove_Click(object sender, RoutedEventArgs e)
+    {
+        RemoveWallpaper();
+        PauseButton.Content = "Pausar";
+        StatusText.Text = "Fondo animado quitado";
+    }
+
+    private void PreviewVideo_MediaOpened(object sender, RoutedEventArgs e)
+    {
+        PreviewVideo.Play();
+        StatusText.Text = $"Video listo · {Path.GetFileName(_sourcePath ?? _selectedPath)}";
+    }
+
+    private void PreviewVideo_MediaEnded(object sender, RoutedEventArgs e)
+    {
+        PreviewVideo.Position = TimeSpan.Zero;
+        PreviewVideo.Play();
+    }
+
+    private async void PreviewVideo_MediaFailed(object sender, ExceptionRoutedEventArgs e)
+    {
+        var failedPath = _previewVideoPath;
+        StopPreview();
+        if (failedPath is null || IsCachedVideo(failedPath))
+        {
+            ShowVideoError(e.ErrorException.Message);
+            return;
+        }
+
+        await ConvertAndPreviewAsync(failedPath);
+    }
+
+    private void ShowPlaybackError(string message)
+    {
+        Dispatcher.BeginInvoke(new Action(async () =>
+        {
+            if (_handlingPlaybackFailure)
+                return;
+
+            var sourcePath = _sourcePath;
+            if (sourcePath is not null
+                && (IsVideo(sourcePath) || IsGif(sourcePath))
+                && VideoTranscoder.GetCachedPath(sourcePath) is null)
+            {
+                _handlingPlaybackFailure = true;
+                try
+                {
+                    var convertedPath = await ConvertVideoAsync(sourcePath);
+                    if (convertedPath is not null)
+                    {
+                        _selectedPath = convertedPath;
+                        SelectedFileText.Text = $"{Path.GetFileName(sourcePath)} (H.264 1080p)";
+                        RemoveWallpaper();
+                        ApplySelectedWallpaper();
+                        return;
+                    }
+                }
+                finally
+                {
+                    _handlingPlaybackFailure = false;
+                }
+            }
+
+            RemoveWallpaper();
+            ShowVideoError(message);
+        }));
+    }
+
+    private async Task ConvertAndPreviewAsync(string sourcePath)
+    {
+        var convertedPath = await ConvertVideoAsync(sourcePath);
+        if (convertedPath is null || !string.Equals(_sourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _selectedPath = convertedPath;
+        SelectedFileText.Text = $"{Path.GetFileName(sourcePath)} (H.264 1080p)";
+        PreviewPlaceholder.Visibility = Visibility.Collapsed;
+        PreviewVideo.Visibility = Visibility.Visible;
+        _previewVideoPath = convertedPath;
+        PreviewVideo.Source = new Uri(convertedPath, UriKind.Absolute);
+        StatusText.Text = "Conversión lista. El video se reproducirá en H.264.";
+    }
+
+    private async Task<string?> ConvertVideoAsync(string sourcePath)
+    {
+        StatusText.Text = $"Convirtiendo {Path.GetFileName(sourcePath)} a H.264 1080p...";
+        try
+        {
+            var progress = new Progress<double>(value =>
+                StatusText.Text = $"Convirtiendo video a H.264 1080p... {value:P0}");
+            return await VideoTranscoder.ConvertToH264Async(sourcePath, progress);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
+        {
+            StatusText.Text = "No se pudo convertir este video.";
+            var message = $"{error.Message}\n\nLa conversión usa los códecs disponibles en Windows y crea una copia H.264 en la caché de Luma.";
+            if (IsVisible)
+                MessageBox.Show(this, message, "No se pudo convertir el video",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            else
+                _trayIcon.ShowBalloonTip(5000, "Luma Wallpaper",
+                    "No se pudo convertir el último video. Abre Luma para ver los detalles.",
+                    Forms.ToolTipIcon.Error);
+            return null;
+        }
+    }
+
+    private void ShowVideoError(string message)
+    {
+        StatusText.Text = "Windows no pudo reproducir este video.";
+        var details = $"{message}\n\nSi está codificado en HEVC/H.265, Luma intentará convertirlo automáticamente a H.264.";
+        if (IsVisible)
+            MessageBox.Show(this, details, "Error de reproducción",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        else
+            _trayIcon.ShowBalloonTip(5000, "Luma Wallpaper",
+                details, Forms.ToolTipIcon.Error);
+    }
+
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_allowClose)
+            return;
+
+        e.Cancel = true;
+        Hide();
+        StatusText.Text = "Luma Wallpaper sigue en segundo plano. Usa el icono de la bandeja para abrir o salir.";
+    }
+
+    private void ShowWindow()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private IntPtr WindowMessageHook(
+        IntPtr hwnd,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        if (message == ActivateWindowMessage)
+        {
+            handled = true;
+            Dispatcher.BeginInvoke(new Action(ShowWindow));
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void ExitApplication()
+    {
+        _allowClose = true;
+        StopPreview();
+        RemoveWallpaper();
+        _trayIcon.Visible = false;
+        Close();
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    private void StopPreview()
+    {
+        PreviewVideo.Stop();
+        PreviewVideo.Source = null;
+        _previewVideoPath = null;
+        PreviewGif.Source = null;
+        _previewGif?.Dispose();
+        _previewGif = null;
+        PreviewPlaceholder.Visibility = Visibility.Visible;
+    }
+
+    private void RemoveWallpaper()
+    {
+        _wallpaper?.Close();
+        _wallpaper = null;
+    }
+
+    private static bool IsGif(string path) =>
+        string.Equals(Path.GetExtension(path), ".gif", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsVideo(string path) =>
+        string.Equals(Path.GetExtension(path), ".mp4", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCachedVideo(string path) =>
+        path.StartsWith(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LumaWallpaper", "Converted") + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase);
+}

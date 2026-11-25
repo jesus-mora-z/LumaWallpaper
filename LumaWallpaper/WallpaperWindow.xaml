@@ -1,0 +1,24 @@
+<Window x:Class="LumaWallpaper.WallpaperWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Background="Black"
+        Width="{x:Static SystemParameters.VirtualScreenWidth}"
+        Height="{x:Static SystemParameters.VirtualScreenHeight}">
+    <Grid ClipToBounds="True" Background="Black">
+        <MediaElement x:Name="WallpaperVideo"
+                      LoadedBehavior="Manual"
+                      UnloadedBehavior="Stop"
+                      Stretch="UniformToFill"
+                      Volume="0"
+                      ScrubbingEnabled="False"
+                      Visibility="Collapsed"
+                      MediaOpened="WallpaperVideo_MediaOpened"
+                      MediaEnded="WallpaperVideo_MediaEnded"
+                      MediaFailed="WallpaperVideo_MediaFailed"/>
+        <Image x:Name="WallpaperGif" Stretch="UniformToFill" Visibility="Collapsed"/>
+    </Grid>
+</Window>
